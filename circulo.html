@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Handpose Circle Color</title>
+</head>
+<body>
+  <!-- p5.js -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.5/lib/p5.min.js"></script>
+  <!-- ml5.js versión compatible con handpose -->
+  <script src="https://unpkg.com/ml5@0.6.0/dist/ml5.min.js"></script>
+
+  <script>
+    let handposeModel;
+    let video;
+    let hands = [];
+    let modelReady = false;
+
+    function setup() {
+      createCanvas(640, 480);
+      // Capturamos vídeo y lo ocultamos (lo dibujaremos manualmente)
+      video = createCapture(VIDEO);
+      video.size(width, height);
+      video.hide();
+
+      // Cargar modelo handpose
+      handposeModel = ml5.handpose(video, () => {
+        console.log("✅ Handpose model loaded");
+        modelReady = true;
+      });
+
+      // Cuando haya predicciones, llamamos a gotHands
+      handposeModel.on("predict", gotHands);
+    }
+
+    function draw() {
+      background(0);
+      // Dibujamos el vídeo en modo espejo
+      push();
+      translate(width, 0);
+      scale(-1, 1);
+      image(video, 0, 0, width, height);
+      pop();
+
+      if (!modelReady) {
+        // Aviso mientras carga el modelo
+        fill(255);
+        textSize(24);
+        textAlign(CENTER, CENTER);
+        text("Cargando modelo...", width/2, height/2);
+        return;
+      }
+
+      if (hands.length > 0) {
+        // Tomamos la primera mano detectada
+        const prediction = hands[0];
+        const indexTip = prediction.annotations.indexFinger[3];
+        const thumbTip = prediction.annotations.thumb[3];
+
+        // Coordenadas del centro entre dedo índice y pulgar
+        const centerX = (indexTip[0] + thumbTip[0]) / 2;
+        const centerY = (indexTip[1] + thumbTip[1]) / 2;
+
+        // Distancia (pinch) entre punta de índice y pulgar
+        const pinchDist = dist(
+          indexTip[0], indexTip[1],
+          thumbTip[0], thumbTip[1]
+        );
+
+        // Elegimos color según la distancia
+        if (pinchDist < 30) {
+          fill(255, 0, 0);       // rojo: pequeño
+        } else if (pinchDist < 60) {
+          fill(255, 255, 0);     // amarillo: mediano
+        } else {
+          fill(0, 255, 0);       // verde: grande
+        }
+
+        stroke(255);
+        strokeWeight(2);
+        // Dibujamos círculo con diámetro igual a pinchDist
+        circle(centerX, centerY, pinchDist);
+      }
+    }
+
+    function gotHands(results) {
+      // Actualizamos el array global de manos
+      hands = results;
+    }
+  </script>
+</body>
+</html>

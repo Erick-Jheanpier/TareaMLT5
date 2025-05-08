@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detección de Objetos con ml5.js</title>
+  <!-- p5.js (necesario para usar createImg, noCanvas, etc.) -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.5/lib/p5.min.js"></script>
+  <!-- ml5.js compatible con handpose -->
+  <script src="https://unpkg.com/ml5@0.6.0/dist/ml5.min.js"></script>
+  <style>
+    #container {
+      display: flex;
+      gap: 1rem;
+    }
+    #container img {
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border 0.2s;
+    }
+    #container img:hover {
+      border: 2px solid #007aff;
+    }
+    #results {
+      margin-top: 1rem;
+      font-family: sans-serif;
+    }
+    .result-block {
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Haz click en una imagen para detectar objetos</h1>
+  <div id="container"></div>
+  <div id="results"></div>
+
+  <script>
+    let detector;
+    const imageFiles = [
+      'images/imagen_1.jpg',
+      'images/imagen2.jpg',
+      'images/imagen3.jpg'
+    ];
+
+    function setup() {
+      // No necesitamos canvas de p5
+      noCanvas();
+
+      // 1) Cargar el detector COCO‑SSD
+      detector = ml5.objectDetector('cocossd', () => {
+        console.log('✅ Modelo COCO‑SSD cargado');
+        createImageButtons();
+      });
+    }
+
+    // 2) Crear “botones” mediante createImg de p5
+    function createImageButtons() {
+      const cont = select('#container');
+      imageFiles.forEach((path, i) => {
+        const img = createImg(path, `Imagen ${i+1}`);
+        img.size(200, 200);
+        img.parent(cont);
+        img.mousePressed(() => detectOnImage(img));
+      });
+    }
+
+    // 3) Cuando el usuario hace click, ejecutar la detección
+    function detectOnImage(p5img) {
+      clearResults();
+      select('#results').html(`<p class="result-block">Detectando en <strong>${p5img.elt.src}</strong>…</p>`);
+      detector.detect(p5img.elt, (err, results) => {
+        if (err) {
+          console.error(err);
+          select('#results').html('<p class="result-block">❌ Error en la detección</p>');
+          return;
+        }
+        showResults(results, p5img.elt.src);
+      });
+    }
+
+    // 4) Mostrar los resultados en pantalla
+    function showResults(results, src) {
+      const resDiv = select('#results');
+      resDiv.html(`<h2>Resultados para <em>${src}</em>:</h2>`);
+      if (results.length === 0) {
+        resDiv.html(resDiv.html() + '<p>No se detectó ningún objeto.</p>');
+        return;
+      }
+      results.forEach(obj => {
+        const p = createP(
+          `• ${obj.label} — ${(obj.confidence * 100).toFixed(2)}% de confianza`
+        );
+        p.parent(resDiv);
+      });
+    }
+
+    function clearResults() {
+      select('#results').html('');
+    }
+  </script>
+</body>
+</html>
